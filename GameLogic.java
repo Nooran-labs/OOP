@@ -5,74 +5,127 @@ public class GameLogic implements PlayableLogic{
 private Player FirstPlayer;
 private Player SecondPlayer;
 private Player CurrentPlayer;
+private int CurrentPlayerNum;
 private ArrayList<Move> MoveH;
 private boolean Turn=true;
+private final int[][] directions = {
+        {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+        {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
 private final int BoardSize = 8; // as in 8x8
     private final Disc [][] board ;
+    private void InitializeBoard(){
+        if(FirstPlayer==null || SecondPlayer==null){return;}
+        CurrentPlayerNum = 1;
+        CurrentPlayer = FirstPlayer;
+        board[3][3] = new SimpleDisc(FirstPlayer);
+        board[4][3] = new SimpleDisc(SecondPlayer);
+        board[4][4] = new SimpleDisc(FirstPlayer);
+        board[3][4] = new SimpleDisc(SecondPlayer);
+    }
     public GameLogic() {
+
         board = new Disc[BoardSize][BoardSize];
+        InitializeBoard();
         MoveH = new ArrayList<>();
-        reset();}
+
+    }
     public boolean locate_disc(Position a, Disc disc){
-            int row = position.row();
-            int col = position.col();
+        boolean ans =false ;
+           if(has(ValidMoves(),a)) {
+               if (disc instanceof BombDisc) {
+                   if (disc.getOwner().getNumber_of_bombs() == 0) {
+                       System.out.println("You have no more BOMBS💣!!");
+                       return ans;
+                   }
+                   board[a.row()][a.col()] = new BombDisc(CurrentPlayer);
+                   disc.getOwner().reduce_bomb();
+                   System.out.println("Player" + CurrentPlayerNum + " placed a Bomb 💣 Disc at : " + a.row() + "," + a.col());
+               }
+               if (disc instanceof UnflippableDisc) {
+                   if (disc.getOwner().getNumber_of_unflippedable() == 0) {
+                       System.out.println("You have no more Unflippables⭕!!");
+                       return ans;
+                   }
+                   board[a.row()][a.col()] = new UnflippableDisc(CurrentPlayer);
+                   disc.getOwner().reduce_unflippedable();
+                   System.out.println("Player" + CurrentPlayerNum + " placed an Unflippable ⭕ Disc at : " + a.row() + "," + a.col());
+               }
+               if (disc instanceof SimpleDisc) {
+                   board[a.row()][a.col()] = new SimpleDisc(CurrentPlayer);
+                   System.out.println("Player" + CurrentPlayerNum + " placed a Simple ⬤ Disc at : " + a.row() + "," + a.col());
+               }
 
-            // טיפול בדיסק פצצה
-            if (disc instanceof BombDisc) {
-                // הנחת דיסק הפצצה
-                board[row][col] = disc;
-                placeBombDisc(row, col, disc);
 
-                // הוספת המהלך להיסטוריה
-                moveHistory.add(new Move(position, disc));
+               ans = true;
 
-                // מעבר לשחקן הבא
-                isFirstPlayerTurn = !isFirstPlayerTurn;
-                currentPlayer = isFirstPlayerTurn ? firstPlayer : secondPlayer;
-                return true;
-            }
+               for (int i = 0; i < 8; i++) {
+                   int[] dir = directions[i];
+                   int test = Testflip(a, dir);
+                   if (test > 0) {   //if there are flips in direction "dir"
+                       Position Nextpos = new Position(a.row() + dir[0], a.col() + dir[1]);
+                       while (OnTheBoard(Nextpos.row(), Nextpos.col()) && board[Nextpos.row()][Nextpos.col()].getOwner() != CurrentPlayer) {   //while the next Position is on the board
+                           Disc NPDisc = board[Nextpos.row()][Nextpos.col()]; //Next position Disc
 
-            // יצירת רשימה לדיסקים שיתווספו אם המהלך חוקי
-            List<Position> discsToFlip = new ArrayList<>();
+                           if (!(NPDisc instanceof UnflippableDisc)) {
+                               board[Nextpos.row()][Nextpos.col()].setOwner(CurrentPlayer);
+                           }
+                           Nextpos = new Position(Nextpos.row() + dir[0], Nextpos.col() + dir[1]);
+                       }
+                   }
+               }
+               if (disc instanceof BombDisc) {
+                   LocateBomb(a, disc);        //Triggers the Bomb and flips the surrounding enemy discs
+               }
+               if(isGameFinished()){
+                   CurrentPlayer.addWin();
+                   System.out.println("Player"+CurrentPlayerNum+" has WON the round!!");
+               }
+               ChangeTurn();
+           }
 
-            // בדיקת כל 8 הכיוונים
-            int[][] directions = {
-                    {-1, -1}, {-1, 0}, {-1, 1},
-                    {0, -1},         {0, 1},
-                    {1, -1}, {1, 0}, {1, 1}
-            };
+        return ans;
+        }
+    private void LocateBomb (Position pos, Disc disc) {
 
-            for (int[] direction : directions) {
-                List<Position> currentFlips = getFlippableDiscs(row, col, direction[0], direction[1], disc);
-                discsToFlip.addAll(currentFlips);
-            }
-
-            // אם אין דיסקים להפוך, המהלך לא חוקי
-            if (discsToFlip.isEmpty()) {
-                return false;
-            }
-
-            // הנחת הדיסק על הלוח
-            board[row][col] = disc;
-
-            // הפיכת הדיסקים בכיוונים החוקיים
-            for (Position pos : discsToFlip) {
-                if (!(board[pos.row()][pos.col()] instanceof UnflippableDisc)) { // דיסקים בלתי הפיכים לא מתהפכים
-                    board[pos.row()][pos.col()].setOwner(disc.getOwner());
+        int r = pos.row();
+        int c = pos.col();
+        for(int i = 0; i<directions.length;i++){ // test every location around the bomb and try to flip it
+            int[] dir= directions[i];
+            Position p = new Position(r+dir[0],c+dir[1]);
+            Disc PDisc = getDiscAtPosition(p); // the disc in position p
+            if(OnTheBoard(p.row(),p.col()) && PDisc != null && disc.getOwner()!=PDisc.getOwner()){// if the Position is on the board and has
+                                                                                                  // a disc owned by the other player try to flip it
+                if(!(PDisc instanceof UnflippableDisc)){
+                    PDisc.setOwner(CurrentPlayer);
+                    if(PDisc instanceof BombDisc){
+                        LocateBomb(p,PDisc);
+                    }
                 }
             }
-
-            // הוספת המהלך להיסטוריה
-            moveHistory.add(new Move(position, disc));
-
-            // מעבר לשחקן הבא
-            isFirstPlayerTurn = !isFirstPlayerTurn;
-            currentPlayer = isFirstPlayerTurn ? firstPlayer : secondPlayer;
-
-  return true;
-
-
-
+        }
+    }
+    public boolean has (List<Position> positions,Position p1){
+        for(int i = 0; i<positions.size();i++){
+            if(positions.get(i).row()==p1.row() && positions.get(i).col() == p1.col()){return true;}
+        }
+        return false;
+    }
+    public void ChangeTurn(){
+        Turn = !Turn;
+        if(CurrentPlayer == FirstPlayer){
+            CurrentPlayer = SecondPlayer;
+        }
+        else {CurrentPlayer = FirstPlayer;}
+        if(CurrentPlayerNum == 1){
+            CurrentPlayerNum = 2;
+        }
+        else {CurrentPlayerNum = 1;}
+    }
+        private boolean OnTheBoard (int r,int c){
+        if(r>=BoardSize || c>=BoardSize || r<0 || c<0){
+            return false;
+        }
+        return true;
         }
     public Disc getDiscAtPosition(Position position){
         int row = position.row();
@@ -99,30 +152,26 @@ private final int BoardSize = 8; // as in 8x8
     }
     public int countFlips(Position a) {
         int flips = 0;
-        int[][] directions = {
-                {-1, 0}, {1, 0}, {0, -1}, {0, 1},
-                {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-        if (isFirstPlayerTurn()) {
-            this.CurrentPlayer = FirstPlayer;
-        } else {
-            this.CurrentPlayer = SecondPlayer;
-        }
+
 
         for (int i = 0; i < 8; i++) {
            flips+= Testflip(a,directions[i]);
         }
         return flips;
     }
-    private int Testflip (Position a,int[] dir){
-        Position clone = a;
+    private int Testflip (Position Pos,int[] dir){
+        Position clone = Pos;
         int NumOfFlips = 0;
-        while (clone.col() + dir[1] >= 0 && clone.row() + dir[0] >= 0 && clone.col() + dir[1] <= 7 && clone.row() + dir[0] <= 7) {   //while the next Position on the board
+        while (OnTheBoard(clone.row()+dir[0], clone.col()+dir[1])) {   //while the next Position is on the board
             Position Nextpos = new Position(clone.row() + dir[0], clone.col() + dir[1]);
+            clone = Nextpos;
             if (board[Nextpos.row()][Nextpos.col()]==null) {
                 return 0;
             } else {
                 if(board[Nextpos.row()][Nextpos.col()].getOwner()==CurrentPlayer ){return NumOfFlips;}
-                NumOfFlips++;
+                if(!(getDiscAtPosition(Pos) instanceof UnflippableDisc)){
+                    NumOfFlips++;
+                }
             }
         }
         return NumOfFlips;
@@ -156,6 +205,7 @@ private final int BoardSize = 8; // as in 8x8
                board[i][j] = null;
                 }
             }
+        InitializeBoard();
         this.FirstPlayer.reset_bombs_and_unflippedable();
         this.SecondPlayer.reset_bombs_and_unflippedable();
         this.Turn=true;

@@ -21,11 +21,20 @@ public class GreedyAI extends AIPlayer{
             }
 
         }
-        Disc disc;
+        Disc disc1;
         if(gameStatus.isFirstPlayerTurn()){
-        disc = new SimpleDisc(gameStatus.getFirstPlayer());}
-        else { disc = new SimpleDisc(gameStatus.getSecondPlayer());}
-        ans = new Move(disc,vm.get(maxFlips));
+            if(gameStatus.getFirstPlayer().number_of_bombs > 0){
+                disc1 = new BombDisc(gameStatus.getFirstPlayer());
+            }
+            else {
+                   disc1 = new SimpleDisc(gameStatus.getFirstPlayer());
+            }
+        }
+        else  if(gameStatus.getSecondPlayer().number_of_bombs > 0){
+            disc1 = new BombDisc(gameStatus.getSecondPlayer());
+        }
+        else { disc1 = new SimpleDisc(gameStatus.getSecondPlayer());}
+        ans = new Move(disc1,vm.get(maxFlips));
         return ans;
 
 
