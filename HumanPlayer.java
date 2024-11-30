@@ -5,6 +5,10 @@ public class HumanPlayer extends Player {
         super(isPlayerOne);
     }
 
+
+    public boolean isHuman(){
+        return true;
+    }
     public boolean isPlayerOne()
     {
         return isPlayerOne;
@@ -18,10 +22,7 @@ public class HumanPlayer extends Player {
     {
         this.wins++;
     }
-    public boolean isHuman()
-    {
-        return true;
-    }
+
 
 
 
