@@ -42,7 +42,7 @@ private final int BoardSize = 8; // as in 8x8
         if(a==null && disc==null) {
             return true;
         }
-        if(ValidMoves().size() == 0){
+        if(ValidMoves().isEmpty()){
             NoValidMoves++;
             ChangeTurn();
             return ans;
@@ -147,12 +147,15 @@ private final int BoardSize = 8; // as in 8x8
           Player Winner = WiningPlayer();
           Winner.addWin();
           int otherPlayerNum;
-          if (CurrentPlayerNum == 1) {
+          int winnerNum;
+          if (Winner == FirstPlayer) {
               otherPlayerNum = 2;
+              winnerNum = 1;
           } else {
               otherPlayerNum = 1;
+              winnerNum =2;
           }
-          System.out.println("Player" + CurrentPlayerNum + " has WON the round with " + WinnerDiscs + " discs!! Player" + otherPlayerNum + " had " + LoserDiscs + " discs.");
+          System.out.println("Player" + winnerNum + " has WON the round with " + WinnerDiscs + " discs!! Player" + otherPlayerNum + " had " + LoserDiscs + " discs.");
           reset();
     }
     public void IncNoValidM(){
@@ -248,7 +251,7 @@ private final int BoardSize = 8; // as in 8x8
         while (OnTheBoard(clone.row()+dir[0], clone.col()+dir[1])) {   //while the next Position is on the board
             Position Nextpos = new Position(clone.row() + dir[0], clone.col() + dir[1]);
             clone = Nextpos;
-            if (board[Nextpos.row()][Nextpos.col()]==null || !(OnTheBoard(clone.row() + dir[0], clone.col() + dir[1])) ) {
+            if (board[Nextpos.row()][Nextpos.col()]==null || (!(OnTheBoard(clone.row() + dir[0], clone.col() + dir[1]))&&board[Nextpos.row()][Nextpos.col()].getOwner()!=CurrentPlayer) ) {
                 return 0;
             } else {
                 if(board[Nextpos.row()][Nextpos.col()].getOwner()==CurrentPlayer ){return NumOfFlips;}
@@ -311,23 +314,24 @@ private final int BoardSize = 8; // as in 8x8
         this.Turn=true;
         }
 
-    public void undoLastMove(){
+    public void undoLastMove() {
         System.out.println("Undoing last move...");
-        if (MoveH.size() == 0){
+        if (MoveH.isEmpty()) {
             System.out.println("No previous move available to undo!");
             return;
         }
-        for (int i = 0; i < DiscsFlipedH.getLast().size(); i++){  // Unflip the previous flipped discs
-             Position p = new Position(DiscsFlipedH.getLast().get(i).row(),DiscsFlipedH.getLast().get(i).col());
-            System.out.println("Flipping back "+board[p.row()][p.col()].getType()+" at "+(p.row()+1)+","+(p.col()+1));
-             board[p.row()][p.col()].setOwner(CurrentPlayer);   // Because we haven't changed turns the Current player's
-                                                                // Discs got flipped the last turn, so we flip them back
+            for (int i = 0; i < DiscsFlipedH.getLast().size(); i++) {  // Unflip the previous flipped discs
+                Position p = new Position(DiscsFlipedH.getLast().get(i).row(), DiscsFlipedH.getLast().get(i).col());
+                System.out.println("Flipping back " + board[p.row()][p.col()].getType() + " at " + (p.row() + 1) + "," + (p.col() + 1));
+                board[p.row()][p.col()].setOwner(CurrentPlayer);   // Because we haven't changed turns the Current player's
+                // Discs got flipped the last turn, so we flip them back
+            }
+            DiscsFlipedH.removeLast();
+            board[MoveH.getLast().position().row()][MoveH.getLast().position().col()] = null;    // Remove the disc that was located
+            System.out.println("Removing" + MoveH.getLast().disc().getType() + " at " + (MoveH.getLast().position().row() + 1) + "," + (MoveH.getLast().position().col() + 1));
+            MoveH.removeLast();
+            ChangeTurn();
+            ;
+
         }
-        DiscsFlipedH.removeLast();
-        board[MoveH.getLast().position().row()][MoveH.getLast().position().col()] = null;    // Remove the disc that was located
-        System.out.println("Removing"+MoveH.getLast().disc().getType()+" at "+(MoveH.getLast().position().row()+1)+","+(MoveH.getLast().position().col()+1));
-        MoveH.removeLast();                                                                                          
-        ChangeTurn();;
-        
     }
-}
